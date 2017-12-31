@@ -36,7 +36,7 @@ impl <'a> Lexer<'a> {
     }
 
     pub fn lex(&mut self) {
-        if let Ok(inside) = self.read_identifier() {
+        if let Ok(inside) = self.read_number() {
             println!("{:?}", inside);
         }
     }
@@ -87,8 +87,8 @@ impl <'a> Lexer<'a> {
             _ => {
                 Err(Error{
                     msg: format!("Error reading character {}", self.input[self.ind]),
-                    line: 1,
-                    col: 1
+                    line: self.line,
+                    col: self.col
                 })
             }
         }
@@ -119,7 +119,42 @@ impl <'a> Lexer<'a> {
     }
 
     fn read_number(&mut self) -> Result<Token, Error> {
-        unimplemented!();
+        let mut dotted = false;
+        let mut digits = String::new();
+
+        for (i,ch) in self.input[self.ind..].iter().enumerate() {
+            match self.input[self.ind] {
+                '0'...'9' => digits.push(self.input[self.ind + i]),
+                '.' => {
+                    if dotted {
+                        break
+                    }
+                    dotted = true;
+                    digits.push(self.input[self.ind + i])
+                }
+                _ => break
+            }
+        }
+
+        if digits.contains('.') {
+            match digits.parse::<f32>() {
+                Ok(floating) => Ok(Token::FloatingPoint(floating)),
+                Err(err) => Err(Error{
+                    msg: format!("Error parsing float: {}", err),
+                    line: self.line,
+                    col: self.col,
+                })
+            }
+        } else {
+            match digits.parse::<i32>() {
+                Ok(integral) => Ok(Token::Integral(integral)),
+                Err(err) => Err(Error{
+                    msg: format!("Error parsing integer: {}", err),
+                    line: self.line,
+                    col: self.col,
+                })
+            }
+        }
     }
 
     fn read_string(&mut self) -> Result<Token, Error> {
