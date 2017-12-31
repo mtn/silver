@@ -6,6 +6,7 @@ pub struct Lexer <'a> {
     keywords: Vec<&'a str>,
 }
 
+#[derive(Debug)]
 pub enum Token {
     Variable(String),
     Operator(String),
@@ -31,6 +32,12 @@ impl <'a> Lexer<'a> {
             line: 1,
             col: 0,
             keywords: vec!["fn", "true", "false", "if", "then", "else"],
+        }
+    }
+
+    pub fn lex(&mut self) {
+        if let Ok(inside) = self.read_operator() {
+            println!("{:?}", inside);
         }
     }
 
@@ -75,7 +82,7 @@ impl <'a> Lexer<'a> {
                 Ok(Token::Delimiter(self.input[self.ind]))
             },
             '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' => {
-                unimplemented!();
+                self.read_operator()
             },
             _ => {
                 Err(Error{
@@ -87,8 +94,13 @@ impl <'a> Lexer<'a> {
         }
     }
 
-    fn read_delimiter(&mut self) -> Result<Token, Error> {
-        unimplemented!();
+    fn read_operator(&mut self) -> Result<Token, Error> {
+        let operator_chars = "=+-*/%&<>!";
+        let op_string = self.read_while(|ch| {
+            operator_chars.contains(ch)
+        });
+
+        Ok(Token::Operator(op_string))
     }
 
     fn read_identifier(&mut self) -> Result<Token, Error> {
@@ -104,31 +116,38 @@ impl <'a> Lexer<'a> {
     }
 
     fn skip_comment(&mut self) {
-        self.consume_while(|ch| {
+        self.read_while(|ch| {
             ch != '\n'
         });
         self.next_char(); // consume newline
     }
 
     fn consume_whitespace(&mut self) {
-        self.consume_while(|ch| {
+        self.read_while(|ch| {
             ch == ' ' || ch == '\t'
-        })
+        });
     }
 
-    fn consume_while<F>(&mut self, func: F)
+    fn read_while<F>(&mut self, func: F) -> String
         where F: Fn(char) -> bool
     {
         let mut to_advance = 0;
-        for ch in self.input[self.ind..].iter() {
+        let mut ret_str = String::new();
+
+        for (i,ch) in self.input[self.ind..].iter().enumerate() {
             if func(*ch) {
                 to_advance += 1;
+                ret_str.push(self.input[self.ind + i])
+            } else {
+                break;
             }
         }
 
         for _ in 0..to_advance {
             self.next_char();
         }
+
+        ret_str
     }
 }
 
