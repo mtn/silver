@@ -13,6 +13,7 @@ pub enum Token {
     StringLiteral(String),
     Integral(i32),
     FloatingPoint(f32),
+    Delimiter(char),
     EOF,
 }
 
@@ -59,24 +60,81 @@ impl <'a> Lexer<'a> {
         match self.input[self.ind] {
             '#' => {
                 self.skip_comment();
-                Err(Error{ msg: String::from("hi"), line: 1, col: 1 })
+                self.get_token()
+            },
+            '"' => {
+                self.read_string()
+            },
+            '0'...'9' => {
+                self.read_number()
+            },
+            'a'...'z' | '_' => {
+                self.read_identifier()
+            },
+            ','|';'|'('|')'|'['|']'|'{'|'}' => {
+                Ok(Token::Delimiter(self.input[self.ind]))
+            },
+            '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' => {
+                unimplemented!();
+            },
+            _ => {
+                Err(Error{
+                    msg: format!("Error reading character {}", self.input[self.ind]),
+                    line: 1,
+                    col: 1
+                })
             }
-            _ => Err(Error{ msg: String::from("hi"), line: 1, col: 1 })
         }
+    }
+
+    fn read_delimiter(&mut self) -> Result<Token, Error> {
+        unimplemented!();
+    }
+
+    fn read_identifier(&mut self) -> Result<Token, Error> {
+        unimplemented!();
+    }
+
+    fn read_number(&mut self) -> Result<Token, Error> {
+        unimplemented!();
+    }
+
+    fn read_string(&mut self) -> Result<Token, Error> {
+        unimplemented!();
+    }
+
+    fn skip_comment(&mut self) {
+        self.consume_while(|ch| {
+            ch != '\n'
+        });
+        self.next_char(); // consume newline
+    }
+
+    fn consume_whitespace(&mut self) {
+        self.consume_while(|ch| {
+            ch == ' ' || ch == '\t'
+        })
     }
 
     fn consume_while<F>(&mut self, func: F)
         where F: Fn(char) -> bool
-        {
-            let mut to_advance = 0;
-            for ch in self.input[self.ind..].iter() {
-                if func(*ch) {
-                    to_advance += 1;
-                }
-            }
-
-            for _ in 0..to_advance {
-                self.next_char();
+    {
+        let mut to_advance = 0;
+        for ch in self.input[self.ind..].iter() {
+            if func(*ch) {
+                to_advance += 1;
             }
         }
+
+        for _ in 0..to_advance {
+            self.next_char();
+        }
+    }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+}
+
