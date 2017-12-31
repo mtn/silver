@@ -39,6 +39,7 @@ impl <'a> Lexer<'a> {
         if let Ok(inside) = self.read_number() {
             println!("{:?}", inside);
         }
+        println!("self.ind {}", self.ind);
     }
 
     fn next_char(&mut self) -> char {
@@ -112,6 +113,10 @@ impl <'a> Lexer<'a> {
             }
         });
 
+        for _ in 0..id.len() {
+            self.next_char();
+        }
+
         if self.keywords.contains(&id.as_str()) {
             return Ok(Token::Keyword(id))
         }
@@ -123,7 +128,7 @@ impl <'a> Lexer<'a> {
         let mut digits = String::new();
 
         for (i,ch) in self.input[self.ind..].iter().enumerate() {
-            match self.input[self.ind] {
+            match *ch {
                 '0'...'9' => digits.push(self.input[self.ind + i]),
                 '.' => {
                     if dotted {
@@ -134,6 +139,10 @@ impl <'a> Lexer<'a> {
                 }
                 _ => break
             }
+        }
+
+        for _ in 0..digits.len() {
+            self.next_char();
         }
 
         if digits.contains('.') {
@@ -159,6 +168,17 @@ impl <'a> Lexer<'a> {
 
     fn read_string(&mut self) -> Result<Token, Error> {
         unimplemented!();
+        // let mut ret_str = String::new();
+        // let mut escaped = false;
+        // self.next_char(); // consume opening '"'
+
+        // for (i,ch) in self.input[self.ind..].iter().enumerate() {
+        //     if escaped {
+        //         ret_str.push(ch)
+        //     }
+        // }
+
+        // self.read_escaped();
     }
 
     fn skip_comment(&mut self) {
@@ -183,7 +203,7 @@ impl <'a> Lexer<'a> {
         for (i,ch) in self.input[self.ind..].iter().enumerate() {
             if func(*ch) {
                 to_advance += 1;
-                ret_str.push(self.input[self.ind + i])
+                ret_str.push(*ch)
             } else {
                 break;
             }
