@@ -36,7 +36,7 @@ impl <'a> Lexer<'a> {
     }
 
     pub fn lex(&mut self) {
-        if let Ok(inside) = self.read_number() {
+        if let Ok(inside) = self.read_string() {
             println!("{:?}", inside);
         }
         println!("self.ind {}", self.ind);
@@ -167,18 +167,29 @@ impl <'a> Lexer<'a> {
     }
 
     fn read_string(&mut self) -> Result<Token, Error> {
-        unimplemented!();
-        // let mut ret_str = String::new();
-        // let mut escaped = false;
-        // self.next_char(); // consume opening '"'
+        let mut ret_str = String::new();
+        let mut escaped = false;
+        self.next_char(); // consume opening '"'
 
-        // for (i,ch) in self.input[self.ind..].iter().enumerate() {
-        //     if escaped {
-        //         ret_str.push(ch)
-        //     }
-        // }
+        for (i,ch) in self.input[self.ind..].iter().enumerate() {
+            if escaped {
+                ret_str.push(*ch);
+                escaped = false;
+            } else if *ch == '\\'{
+                escaped = true;
+            } else if *ch == '"' {
+                break;
+            } else {
+                ret_str.push(*ch);
+            }
+        }
 
-        // self.read_escaped();
+        for _ in 0..ret_str.len() {
+            self.next_char();
+        }
+        self.next_char();
+
+        Ok(Token::StringLiteral(ret_str))
     }
 
     fn skip_comment(&mut self) {
