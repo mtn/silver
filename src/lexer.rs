@@ -36,7 +36,7 @@ impl <'a> Lexer<'a> {
     }
 
     pub fn lex(&mut self) {
-        if let Ok(inside) = self.read_operator() {
+        if let Ok(inside) = self.read_identifier() {
             println!("{:?}", inside);
         }
     }
@@ -104,7 +104,18 @@ impl <'a> Lexer<'a> {
     }
 
     fn read_identifier(&mut self) -> Result<Token, Error> {
-        unimplemented!();
+        let special_id_chars = "?!-<>=_";
+        let id = self.read_while(|ch| {
+            match ch {
+                '0'...'9' | 'a'...'z' | 'A'...'Z' => true,
+                _ => special_id_chars.contains(ch)
+            }
+        });
+
+        if self.keywords.contains(&id.as_str()) {
+            return Ok(Token::Keyword(id))
+        }
+        Ok(Token::Variable(id))
     }
 
     fn read_number(&mut self) -> Result<Token, Error> {
