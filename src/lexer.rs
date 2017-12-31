@@ -13,6 +13,13 @@ pub enum Token {
     StringLiteral(String),
     Integral(i32),
     FloatingPoint(f32),
+    EOF,
+}
+
+pub struct Error {
+    msg: String,
+    line: u32,
+    col: u32,
 }
 
 impl <'a> Lexer<'a> {
@@ -38,4 +45,38 @@ impl <'a> Lexer<'a> {
 
         ch
     }
+
+    fn eof(&self) -> bool {
+        self.ind >= self.input.len()
+    }
+
+    fn get_token(&mut self) -> Result<Token, Error> {
+        self.consume_whitespace();
+        if self.eof() {
+            return Ok(Token::EOF)
+        }
+
+        match self.input[self.ind] {
+            '#' => {
+                self.skip_comment();
+                Err(Error{ msg: String::from("hi"), line: 1, col: 1 })
+            }
+            _ => Err(Error{ msg: String::from("hi"), line: 1, col: 1 })
+        }
+    }
+
+    fn consume_while<F>(&mut self, func: F)
+        where F: Fn(char) -> bool
+        {
+            let mut to_advance = 0;
+            for ch in self.input[self.ind..].iter() {
+                if func(*ch) {
+                    to_advance += 1;
+                }
+            }
+
+            for _ in 0..to_advance {
+                self.next_char();
+            }
+        }
 }
