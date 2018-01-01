@@ -1,4 +1,7 @@
 use super::lexer;
+use super::lexer::Token;
+
+use super::util::Error;
 
 pub enum ASTNode {
     Integer(i32),
@@ -16,16 +19,34 @@ pub enum ASTNode {
 }
 
 pub struct Parser <'a> {
-    tokens: lexer::Lexer<'a>,
+    lexer: lexer::Lexer<'a>,
 }
 
 impl <'a> Parser <'a> {
-    pub fn new() -> Parser<'a> {
-        unimplemented!();
+    pub fn new(lexer: lexer::Lexer<'a>) -> Parser<'a> {
+        Parser { lexer}
     }
 
     pub fn parse_top_level(&mut self) -> ASTNode {
-        unimplemented!();
+        let mut program: Vec<ASTNode> = Vec::new();
+
+        while !self.lexer.eof() {
+            program.push(self.parse_expression());
+            if !self.lexer.eof() {
+                self.consume(Token::Delimiter(';'));
+            }
+        }
+
+        ASTNode::Program(program)
+    }
+
+    fn consume(&mut self, token: Token) -> Result<Token, Error> {
+        let next = self.lexer.get_token();
+        if let Ok(tok) = next {
+            if token == tok
+        }
+
+
     }
 
     fn parse_expression(&mut self) -> ASTNode {

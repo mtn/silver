@@ -1,3 +1,5 @@
+use super::util::Error;
+
 pub struct Lexer <'a> {
     input: Vec<char>,
     ind: usize,
@@ -6,7 +8,7 @@ pub struct Lexer <'a> {
     keywords: Vec<&'a str>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Variable(String),
     Operator(String),
@@ -16,12 +18,6 @@ pub enum Token {
     FloatingPoint(f32),
     Delimiter(char),
     EOF,
-}
-
-pub struct Error {
-    msg: String,
-    line: u32,
-    col: u32,
 }
 
 impl <'a> Lexer<'a> {
@@ -55,11 +51,11 @@ impl <'a> Lexer<'a> {
         ch
     }
 
-    fn eof(&self) -> bool {
+    pub fn eof(&self) -> bool {
         self.ind >= self.input.len()
     }
 
-    fn get_token(&mut self) -> Result<Token, Error> {
+    pub fn get_token(&mut self) -> Result<Token, Error> {
         self.consume_whitespace();
         if self.eof() {
             return Ok(Token::EOF)
@@ -86,11 +82,8 @@ impl <'a> Lexer<'a> {
                 self.read_operator()
             },
             _ => {
-                Err(Error{
-                    msg: format!("Error reading character {}", self.input[self.ind]),
-                    line: self.line,
-                    col: self.col
-                })
+                Err(self.get_error(format!("Error reading character {}",
+                                           self.input[self.ind])))
             }
         }
     }
@@ -148,20 +141,14 @@ impl <'a> Lexer<'a> {
         if digits.contains('.') {
             match digits.parse::<f32>() {
                 Ok(floating) => Ok(Token::FloatingPoint(floating)),
-                Err(err) => Err(Error{
-                    msg: format!("Error parsing float: {}", err),
-                    line: self.line,
-                    col: self.col,
-                })
+                Err(err) => Err(self.get_error(format!("Error parsing float: {}",
+                                                       err)))
             }
         } else {
             match digits.parse::<i32>() {
                 Ok(integral) => Ok(Token::Integral(integral)),
-                Err(err) => Err(Error{
-                    msg: format!("Error parsing integer: {}", err),
-                    line: self.line,
-                    col: self.col,
-                })
+                Err(err) => Err(self.get_error(format!("Error parsing integer: {}",
+                                                       err)))
             }
         }
     }
@@ -225,6 +212,14 @@ impl <'a> Lexer<'a> {
         }
 
         ret_str
+    }
+
+    pub fn get_error(&self, msg: String) -> Error {
+        Error {
+            msg,
+            line: self.line,
+            col: self.col,
+        }
     }
 }
 
