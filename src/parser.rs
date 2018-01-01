@@ -27,37 +27,62 @@ impl <'a> Parser <'a> {
         Parser { lexer}
     }
 
-    pub fn parse_top_level(&mut self) -> ASTNode {
+    pub fn parse_top_level(&mut self) -> Result<ASTNode, Error> {
         let mut program: Vec<ASTNode> = Vec::new();
 
         while !self.lexer.eof() {
-            program.push(self.parse_expression());
+            match self.parse_expression() {
+                Ok(exp) => program.push(exp),
+                Err(err) => return Err(err)
+            }
             if !self.lexer.eof() {
                 self.consume(Token::Delimiter(';'));
             }
         }
 
-        ASTNode::Program(program)
+        Ok(ASTNode::Program(program))
     }
 
     fn consume(&mut self, token: Token) -> Result<Token, Error> {
         let next = self.lexer.get_token();
         if let Ok(tok) = next {
-            if token == tok
+            if token == tok {
+                Ok(tok)
+            } else {
+                Err(self.lexer.get_error(format!("Unexpected token, expected {:?} given {:?}",
+                                                 tok, token)))
+            }
+        } else {
+            Err(self.lexer.get_error(String::from("get_token failed")))
+        }
+    }
+
+    fn parse_delimited<F>(&mut self, start: Token, separator: Token,
+                       end: Token, parse_function: F) -> Result<ASTNode, Error>
+        where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
+    {
+        self.consume(start);
+
+        let mut first = true;
+        while !self.lexer.eof() {
+            if let Ok(next) = self.lexer.get_token() {
+
+            } else {
+            }
         }
 
-
+        Ok(ASTNode::Integer(5))
     }
 
-    fn parse_expression(&mut self) -> ASTNode {
+    fn parse_expression(&mut self) -> Result<ASTNode, Error> {
+        self.parse_delimited(Token::EOF, Token::EOF, Token::EOF, Self::parse_conditional)
+    }
+
+    fn parse_conditional(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
     }
 
-    fn parse_conditional(&mut self) -> ASTNode {
-        unimplemented!();
-    }
-
-    fn parse_atom(&mut self) -> ASTNode {
+    fn parse_atom(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
     }
 

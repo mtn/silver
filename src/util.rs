@@ -1,7 +1,7 @@
 
 pub struct Error {
-    msg: String,
-    line: u32,
-    col: u32,
+    pub msg: String,
+    pub line: u32,
+    pub col: u32,
 }
 
