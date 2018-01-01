@@ -2,13 +2,14 @@ use super::util::Error;
 
 pub struct Lexer <'a> {
     input: Vec<char>,
-    ind: usize,
+    pub ind: usize,
     line: u32,
     col: u32,
     keywords: Vec<&'a str>,
+    peeked: Option<Token>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Variable(String),
     Operator(String),
@@ -28,14 +29,8 @@ impl <'a> Lexer<'a> {
             line: 1,
             col: 0,
             keywords: vec!["fn", "true", "false", "if", "then", "else"],
+            peeked: None,
         }
-    }
-
-    pub fn lex(&mut self) {
-        if let Ok(inside) = self.read_string() {
-            println!("{:?}", inside);
-        }
-        println!("self.ind {}", self.ind);
     }
 
     fn next_char(&mut self) -> char {
@@ -56,6 +51,13 @@ impl <'a> Lexer<'a> {
     }
 
     pub fn get_token(&mut self) -> Result<Token, Error> {
+        let ret: Result<Token, Error>;
+        if let Some(_) = self.peeked {
+            ret = Ok(self.peeked.clone().unwrap());
+            self.peeked = None;
+            return ret
+        }
+
         self.consume_whitespace();
         if self.eof() {
             return Ok(Token::EOF)
@@ -76,7 +78,7 @@ impl <'a> Lexer<'a> {
                 self.read_identifier()
             },
             ','|';'|'('|')'|'['|']'|'{'|'}' => {
-                Ok(Token::Delimiter(self.input[self.ind]))
+                Ok(Token::Delimiter(self.next_char()))
             },
             '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' => {
                 self.read_operator()
@@ -86,6 +88,13 @@ impl <'a> Lexer<'a> {
                                            self.input[self.ind])))
             }
         }
+    }
+
+    pub fn peek(&mut self) -> Result<Token, Error> {
+        if let None = self.peeked {
+            self.peeked = Some(self.get_token()?);
+        }
+        Ok(self.peeked.clone().unwrap())
     }
 
     fn read_operator(&mut self) -> Result<Token, Error> {
@@ -105,10 +114,6 @@ impl <'a> Lexer<'a> {
                 _ => special_id_chars.contains(ch)
             }
         });
-
-        for _ in 0..id.len() {
-            self.next_char();
-        }
 
         if self.keywords.contains(&id.as_str()) {
             return Ok(Token::Keyword(id))
@@ -158,7 +163,7 @@ impl <'a> Lexer<'a> {
         let mut escaped = false;
         self.next_char(); // consume opening '"'
 
-        for (i,ch) in self.input[self.ind..].iter().enumerate() {
+        for ch in self.input[self.ind..].iter() {
             if escaped {
                 ret_str.push(*ch);
                 escaped = false;
@@ -195,19 +200,17 @@ impl <'a> Lexer<'a> {
     fn read_while<F>(&mut self, func: F) -> String
         where F: Fn(char) -> bool
         {
-        let mut to_advance = 0;
         let mut ret_str = String::new();
 
         for ch in self.input[self.ind..].iter() {
             if func(*ch) {
-                to_advance += 1;
                 ret_str.push(*ch)
             } else {
                 break;
             }
         }
 
-        for _ in 0..to_advance {
+        for _ in 0..ret_str.len() {
             self.next_char();
         }
 

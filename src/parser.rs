@@ -3,6 +3,7 @@ use super::lexer::Token;
 
 use super::util::Error;
 
+#[derive(Debug)]
 pub enum ASTNode {
     Integer(i32),
     Float(f32),
@@ -19,12 +20,13 @@ pub enum ASTNode {
 }
 
 pub struct Parser <'a> {
-    lexer: lexer::Lexer<'a>,
+    pub lexer: lexer::Lexer<'a>,
 }
 
 impl <'a> Parser <'a> {
-    pub fn new(lexer: lexer::Lexer<'a>) -> Parser<'a> {
-        Parser { lexer}
+    pub fn parse(&mut self) {
+        let res = self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','), Token::Delimiter(')'), Self::parse_variable_name);
+        println!("res {:?}", res);
     }
 
     pub fn parse_top_level(&mut self) -> Result<ASTNode, Error> {
@@ -36,7 +38,7 @@ impl <'a> Parser <'a> {
                 Err(err) => return Err(err)
             }
             if !self.lexer.eof() {
-                self.consume(Token::Delimiter(';'));
+                self.consume(Token::Delimiter(';'))?;
             }
         }
 
@@ -58,24 +60,38 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_delimited<F>(&mut self, start: Token, separator: Token,
-                       end: Token, parse_function: F) -> Result<ASTNode, Error>
+                       end: Token, parse_function: F) -> Result<Vec<ASTNode>, Error>
         where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
     {
-        self.consume(start);
+        self.consume(start)?;
 
         let mut first = true;
-        while !self.lexer.eof() {
-            if let Ok(next) = self.lexer.get_token() {
+        let mut terms: Vec<ASTNode> = Vec::new();
 
-            } else {
+        while !self.lexer.eof() {
+            if self.lexer.peek()? == end {
+                break;
             }
+
+            if first {
+                first = false;
+            } else {
+                self.consume(separator.clone())?;
+            }
+
+            if self.lexer.peek()? == end {
+                break;
+            }
+
+            terms.push(parse_function(self)?)
         }
 
-        Ok(ASTNode::Integer(5))
+        Ok(terms)
     }
 
     fn parse_expression(&mut self) -> Result<ASTNode, Error> {
-        self.parse_delimited(Token::EOF, Token::EOF, Token::EOF, Self::parse_conditional)
+        unimplemented!();
+        // self.parse_delimited(Token::EOF, Token::EOF, Token::EOF, Self::parse_conditional)
     }
 
     fn parse_conditional(&mut self) -> Result<ASTNode, Error> {
@@ -84,6 +100,14 @@ impl <'a> Parser <'a> {
 
     fn parse_atom(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
+    }
+
+    fn parse_variable_name(&mut self) -> Result<ASTNode, Error> {
+        let var_token = self.lexer.get_token()?;
+        match var_token {
+            Token::Variable(ref name) => Ok(ASTNode::StringLiteral(name.clone())),
+            e => Err(self.lexer.get_error(format!("Expected type variable, got {:?}", e)))
+        }
     }
 
     fn get_precedence(node: ASTNode) -> u32 {

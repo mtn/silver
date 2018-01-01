@@ -1,4 +1,5 @@
 
+#[derive(Debug, Clone)]
 pub struct Error {
     pub msg: String,
     pub line: u32,
