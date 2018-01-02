@@ -11,12 +11,36 @@ pub enum ASTNode {
     Boolean(bool),
 
     Name(String),
-    Variable { name: String, def: Box<ASTNode> },
-    Function { args: Vec<ASTNode>, body: Box<ASTNode> },
+    Variable {
+        name: String,
+        def: Box<ASTNode>
+    },
 
-    Invocation { func: Box<ASTNode>, args: Vec<ASTNode> },
-    Binary { op: Token, lhs: Box<ASTNode>, rhs: Box<ASTNode> },
-    Block { vars: Vec<ASTNode>, body: Box<ASTNode> },
+    Function {
+        args: Vec<ASTNode>,
+        body: Box<ASTNode>
+    },
+
+    Invocation {
+        func: Box<ASTNode>,
+        args: Vec<ASTNode>
+    },
+
+    Conditional {
+        cond: Box<ASTNode>,
+        if_body: Box<ASTNode>,
+        else_body: Box<Option<ASTNode>>
+    },
+
+    Binary {
+        op: Token,
+        lhs: Box<ASTNode>,
+        rhs: Box<ASTNode>
+    },
+    Block {
+        vars: Vec<ASTNode>,
+        body: Box<ASTNode>
+    },
 
     Sequence(Vec<ASTNode>)
 }
@@ -95,11 +119,50 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_expression(&mut self) -> Result<ASTNode, Error> {
-        unimplemented!();
+        self.parse_inv_or_expr(Self::parse_expression_helper)
+    }
+
+    fn parse_expression_helper(&mut self) -> Result<ASTNode, Error> {
+        // Parse the next atom
+        let next_atom = self.parse_atom()?;
+        // Look ahead for operators
+        self.parse_binary(next_atom, 0)
     }
 
     fn parse_conditional(&mut self) -> Result<ASTNode, Error> {
-        unimplemented!();
+        self.consume(Token::Keyword(String::from("if")));
+
+        let condition = self.parse_expression()?;
+
+        if let Token::Keyword(ref kw) = self.lexer.get_token()? {
+            if kw == "then" {
+                self.consume(Token::Keyword(String::from("then")));
+            } else {
+                return Err(self.lexer.get_error(
+                        format!("Unexpected keyword {} after if, expected then", kw)));
+            }
+        }
+
+        let if_body = self.parse_expression()?;
+        let else_body: Option<ASTNode>;
+
+        if let Token::Keyword(ref kw) = self.lexer.peek()? {
+            if kw == "else" {
+                self.consume(Token::Keyword(String::from("then")));
+                else_body = Some(self.parse_expression()?);
+            } else {
+                return Err(self.lexer.get_error(
+                        format!("Unexpected keyword {}, expected else or nothing", kw)));
+            }
+        } else {
+            else_body = None;
+        }
+
+        Ok(ASTNode::Conditional {
+            cond: Box::new(condition),
+            if_body: Box::new(if_body),
+            else_body: Box::new(else_body)
+        })
     }
 
     fn parse_atom(&mut self) -> Result<ASTNode, Error> {
