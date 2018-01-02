@@ -196,7 +196,7 @@ impl <'a> Lexer<'a> {
 
     fn read_while<F>(&mut self, func: F) -> String
         where F: Fn(char) -> bool
-        {
+    {
         let mut ret_str = String::new();
 
         for ch in self.input[self.ind..].iter() {

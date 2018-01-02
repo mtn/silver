@@ -3,7 +3,7 @@ use super::lexer::Token;
 
 use super::util::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ASTNode {
     Integer(i32),
     Float(f32),
@@ -15,7 +15,7 @@ pub enum ASTNode {
     Function { args: Vec<ASTNode>, body: Box<ASTNode> },
 
     Invocation { func: Box<ASTNode>, args: Vec<ASTNode> },
-    Binary { op: lexer::Token, lhs: Box<ASTNode>, rhs: Box<ASTNode> },
+    Binary { op: Token, lhs: Box<ASTNode>, rhs: Box<ASTNode> },
     Block { vars: Vec<ASTNode>, body: Box<ASTNode> },
 
     Sequence(Vec<ASTNode>)
@@ -65,7 +65,7 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_delimited<F>(&mut self, start: Token, separator: Token,
-                       end: Token, parse_function: F) -> Result<Vec<ASTNode>, Error>
+                          end: Token, parse_function: F) -> Result<Vec<ASTNode>, Error>
         where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
     {
         self.consume(start)?;
@@ -148,8 +148,31 @@ impl <'a> Parser <'a> {
         }
     }
 
-    fn parse_binary(&mut self) -> Result<ASTNode, Error> {
-        unimplemented!();
+    // Accepts a binary ASTNode or a nonbinary node with precedence 0, and either
+    // returns the expression (if it has higher precedence) or repeats, advancing one
+    fn parse_binary(&mut self, lhs: ASTNode, lhs_prec: u32) -> Result<ASTNode, Error> {
+        let next = self.lexer.peek();
+        if let Token::Operator(ref op) = next? {
+            let rhs_prec = Self::get_precedence(op);
+            if rhs_prec > lhs_prec {
+                // Parse the next atom, which follows the rhs operator
+                let next_atom = self.parse_atom()?;
+                // Parse for subsequent binary. Either left has higher precedence, or we
+                // advance right accumulating the lhs until there's only one term left
+                let next_binary = self.parse_binary(next_atom, rhs_prec)?;
+
+                return self.parse_binary(ASTNode::Binary {
+                    op: Token::Operator(op.clone()),
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(next_binary),
+                }, lhs_prec)
+            } else {
+                return Ok(lhs)
+            }
+        } else {
+            Err(self.lexer.get_error(format!("Unexpected call to parse_binary, \
+                                          expected token")))
+        }
     }
 
     fn parse_let(&mut self) -> Result<ASTNode, Error> {
@@ -221,31 +244,22 @@ impl <'a> Parser <'a> {
 
         match sequence.len() {
             0 =>
-                unimplemented!(),
+                Ok(ASTNode::Boolean(false)), // empty sequences are falsey
             1 =>
-                unimplemented!(),
-            _ => unimplemented!(),
+                Ok(sequence[0].clone()),
+            _ => Ok(ASTNode::Sequence(sequence))
         }
-        unimplemented!();
     }
 
-    fn get_precedence(node: ASTNode) -> u32 {
-        if let ASTNode::Binary { op, lhs: _, rhs: _ } = node {
-            if let Token::Operator(ref kind) = op {
-                match kind.as_str() {
-                    "=" => 1,
-                    "||" => 2,
-                    "&&" => 3,
-                    "<"|"<="|">"|">="|"=="|"!=" => 4,
-                    "+"|"-" => 5,
-                    "*"|"/"|"%" => 6,
-                    _ => panic!("Unexpected operator on binary ASTNode"),
-                };
-            } else {
-                panic!("Improperly formatted binary ASTNode");
-            }
+    fn get_precedence(op: &str) -> u32 {
+        match op {
+            "=" => 1,
+            "||" => 2,
+            "&&" => 3,
+            "<"|"<="|">"|">="|"=="|"!=" => 4,
+            "+"|"-" => 5,
+            "*"|"/"|"%" => 6,
+            _ => panic!("Unexpected operator on binary ASTNode"),
         }
-
-        panic!("Unexpected call to get_precedence");
     }
 }
