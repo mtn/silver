@@ -10,8 +10,10 @@ pub enum ASTNode {
     StringLiteral(String),
     Boolean(bool),
 
+    Name(String),
     Variable { name: String, def: Box<ASTNode> },
     Function { args: Vec<ASTNode>, body: Box<ASTNode> },
+
     Invocation { func: Box<ASTNode>, args: Vec<ASTNode> },
     Binary { op: lexer::Token, lhs: Box<ASTNode>, rhs: Box<ASTNode> },
     Block { vars: Vec<ASTNode>, body: Box<ASTNode> },
@@ -25,8 +27,8 @@ pub struct Parser <'a> {
 
 impl <'a> Parser <'a> {
     pub fn parse(&mut self) {
-        let res = self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','), Token::Delimiter(')'), Self::parse_variable_name);
-        println!("res {:?}", res);
+        // let res  = self.parse_inv_or_expr();
+        // println!("res {:?}", res.unwrap());
     }
 
     pub fn parse_top_level(&mut self) -> Result<ASTNode, Error> {
@@ -91,7 +93,6 @@ impl <'a> Parser <'a> {
 
     fn parse_expression(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
-        // self.parse_delimited(Token::EOF, Token::EOF, Token::EOF, Self::parse_conditional)
     }
 
     fn parse_conditional(&mut self) -> Result<ASTNode, Error> {
@@ -99,20 +100,82 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_atom(&mut self) -> Result<ASTNode, Error> {
+        self.parse_inv_or_expr(Self::parse_atom_helper)
+    }
+
+    fn parse_atom_helper(&mut self) -> Result<ASTNode, Error> {
+        let next = self.lexer.peek();
+        match next? {
+            Token::Delimiter('(') => {
+                self.consume(Token::Delimiter('('));
+                let exp = self.parse_expression();
+                self.consume(Token::Delimiter(')'));
+
+                exp
+            },
+            Token::Delimiter('{') => self.parse_program(),
+            Token::Keyword(ref kw) => {
+                match kw.as_str() {
+                    "if" => self.parse_conditional(),
+                    "true" | "false" => self.parse_bool(),
+                    "fn" => self.parse_declaration(),
+                    _ => Ok(ASTNode::Integer(3)),
+                }
+            },
+            _ => Ok(ASTNode::Integer(3))
+        }
+    }
+
+    fn parse_binary(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
+    }
+
+    fn parse_declaration(&mut self) -> Result<ASTNode, Error> {
+        self.consume(Token::Keyword(String::from("fn")));
+
+        Ok(ASTNode::Function {
+            args: self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','),
+                                       Token::Delimiter(')'), Self::parse_variable_name)?,
+            body: Box::new(self.parse_program()?)
+        })
+    }
+
+    // Returns either an invocation or an expression, depending on what follows
+    fn parse_inv_or_expr<F>(&mut self, parse_function: F) -> Result<ASTNode, Error>
+        where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
+    {
+        let expr = parse_function(self);
+
+        if Token::Delimiter('(') == self.lexer.peek()? {
+            return Ok(ASTNode::Invocation {
+                func: Box::new(expr?),
+                args: self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','),
+                                           Token::Delimiter(')'), Self::parse_expression)?
+            })
+        }
+
+        expr
     }
 
     fn parse_variable_name(&mut self) -> Result<ASTNode, Error> {
         let var_token = self.lexer.get_token()?;
         match var_token {
-            Token::Variable(ref name) => Ok(ASTNode::StringLiteral(name.clone())),
+            Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
             e => Err(self.lexer.get_error(format!("Expected type variable, got {:?}", e)))
         }
     }
 
+    fn parse_bool(&mut self) -> Result<ASTNode, Error>  {
+        unimplemented!();
+    }
+
+    fn parse_program(&mut self) -> Result<ASTNode, Error> {
+        unimplemented!();
+    }
+
     fn get_precedence(node: ASTNode) -> u32 {
         if let ASTNode::Binary { op, lhs: _, rhs: _ } = node {
-            if let lexer::Token::Operator(ref kind) = op {
+            if let Token::Operator(ref kind) = op {
                 match kind.as_str() {
                     "=" => 1,
                     "||" => 2,
