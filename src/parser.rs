@@ -18,7 +18,7 @@ pub enum ASTNode {
     Binary { op: lexer::Token, lhs: Box<ASTNode>, rhs: Box<ASTNode> },
     Block { vars: Vec<ASTNode>, body: Box<ASTNode> },
 
-    Program(Vec<ASTNode>)
+    Sequence(Vec<ASTNode>)
 }
 
 pub struct Parser <'a> {
@@ -44,7 +44,7 @@ impl <'a> Parser <'a> {
             }
         }
 
-        Ok(ASTNode::Program(program))
+        Ok(ASTNode::Sequence(program))
     }
 
     fn consume(&mut self, token: Token) -> Result<Token, Error> {
@@ -104,8 +104,7 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_atom_helper(&mut self) -> Result<ASTNode, Error> {
-        let next = self.lexer.peek();
-        match next? {
+        match self.lexer.peek()? {
             Token::Delimiter('(') => {
                 self.consume(Token::Delimiter('('));
                 let exp = self.parse_expression();
@@ -119,14 +118,29 @@ impl <'a> Parser <'a> {
                     "if" => self.parse_conditional(),
                     "true" | "false" => self.parse_bool(),
                     "fn" => self.parse_declaration(),
+                    "let" => self.parse_let(),
                     _ => Ok(ASTNode::Integer(3)),
                 }
             },
-            _ => Ok(ASTNode::Integer(3))
+            _ => {
+                let next = self.lexer.get_token();
+                match next? {
+                    Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
+                    Token::Integral(val) => Ok(ASTNode::Integer(val)),
+                    Token::FloatingPoint(val) => Ok(ASTNode::Float(val)),
+                    Token::StringLiteral(ref val) => Ok(ASTNode::StringLiteral(val.clone())),
+                    _ => Err(self.lexer.get_error(String::from(
+                                "Unexpected element in parse_atom"))),
+                }
+            }
         }
     }
 
     fn parse_binary(&mut self) -> Result<ASTNode, Error> {
+        unimplemented!();
+    }
+
+    fn parse_let(&mut self) -> Result<ASTNode, Error> {
         unimplemented!();
     }
 
@@ -158,15 +172,24 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_variable_name(&mut self) -> Result<ASTNode, Error> {
-        let var_token = self.lexer.get_token()?;
-        match var_token {
+        match self.lexer.get_token()? {
             Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
             e => Err(self.lexer.get_error(format!("Expected type variable, got {:?}", e)))
         }
     }
 
     fn parse_bool(&mut self) -> Result<ASTNode, Error>  {
-        unimplemented!();
+        match self.lexer.get_token()? {
+            Token::Keyword(ref val) => {
+                match val.as_str() {
+                    "true" => Ok(ASTNode::Boolean(true)),
+                    "false" => Ok(ASTNode::Boolean(false)),
+                    e => Err(self.lexer.get_error(format!("Expected type boolean, got {:?}",
+                                                          e)))
+                }
+            },
+            e => Err(self.lexer.get_error(format!("Expected type boolean, got {:?}", e)))
+        }
     }
 
     fn parse_program(&mut self) -> Result<ASTNode, Error> {
