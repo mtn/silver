@@ -36,8 +36,10 @@ impl <'a> Parser <'a> {
 
         while !self.lexer.eof() {
             match self.parse_expression() {
-                Ok(exp) => program.push(exp),
-                Err(err) => return Err(err)
+                Ok(exp) =>
+                    program.push(exp),
+                Err(err) =>
+                    return Err(err)
             }
             if !self.lexer.eof() {
                 self.consume(Token::Delimiter(';'))?;
@@ -53,8 +55,9 @@ impl <'a> Parser <'a> {
             if token == tok {
                 Ok(tok)
             } else {
-                Err(self.lexer.get_error(format!("Unexpected token, expected {:?} given {:?}",
-                                                 tok, token)))
+                Err(self.lexer.get_error(format!(
+                            "Unexpected token, expected {:?} given {:?}",
+                            tok, token)))
             }
         } else {
             Err(self.lexer.get_error(String::from("get_token failed")))
@@ -112,25 +115,34 @@ impl <'a> Parser <'a> {
 
                 exp
             },
-            Token::Delimiter('{') => self.parse_program(),
+            Token::Delimiter('{') => self.parse_sequence(),
             Token::Keyword(ref kw) => {
                 match kw.as_str() {
-                    "if" => self.parse_conditional(),
-                    "true" | "false" => self.parse_bool(),
-                    "fn" => self.parse_declaration(),
-                    "let" => self.parse_let(),
-                    _ => Ok(ASTNode::Integer(3)),
+                    "if" =>
+                        self.parse_conditional(),
+                    "true" | "false" =>
+                        self.parse_bool(),
+                    "fn" =>
+                        self.parse_declaration(),
+                    "let" =>
+                        self.parse_let(),
+                    _ =>
+                        Ok(ASTNode::Integer(3)),
                 }
             },
             _ => {
                 let next = self.lexer.get_token();
                 match next? {
-                    Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
-                    Token::Integral(val) => Ok(ASTNode::Integer(val)),
-                    Token::FloatingPoint(val) => Ok(ASTNode::Float(val)),
-                    Token::StringLiteral(ref val) => Ok(ASTNode::StringLiteral(val.clone())),
-                    _ => Err(self.lexer.get_error(String::from(
-                                "Unexpected element in parse_atom"))),
+                    Token::Variable(ref name) =>
+                        Ok(ASTNode::Name(name.clone())),
+                    Token::Integral(val) =>
+                        Ok(ASTNode::Integer(val)),
+                    Token::FloatingPoint(val) =>
+                        Ok(ASTNode::Float(val)),
+                    Token::StringLiteral(ref val) =>
+                        Ok(ASTNode::StringLiteral(val.clone())),
+                    _ => Err(self.lexer.get_error(
+                                String::from("Unexpected element in parse_atom"))),
                 }
             }
         }
@@ -148,9 +160,11 @@ impl <'a> Parser <'a> {
         self.consume(Token::Keyword(String::from("fn")));
 
         Ok(ASTNode::Function {
-            args: self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','),
-                                       Token::Delimiter(')'), Self::parse_variable_name)?,
-            body: Box::new(self.parse_program()?)
+            args: self.parse_delimited(Token::Delimiter('('),
+                                       Token::Delimiter(','),
+                                       Token::Delimiter(')'),
+                                       Self::parse_variable_name)?,
+            body: Box::new(self.parse_sequence()?)
         })
     }
 
@@ -163,8 +177,10 @@ impl <'a> Parser <'a> {
         if Token::Delimiter('(') == self.lexer.peek()? {
             return Ok(ASTNode::Invocation {
                 func: Box::new(expr?),
-                args: self.parse_delimited(Token::Delimiter('('), Token::Delimiter(','),
-                                           Token::Delimiter(')'), Self::parse_expression)?
+                args: self.parse_delimited(Token::Delimiter('('),
+                                           Token::Delimiter(','),
+                                           Token::Delimiter(')'),
+                                           Self::parse_expression)?
             })
         }
 
@@ -173,8 +189,10 @@ impl <'a> Parser <'a> {
 
     fn parse_variable_name(&mut self) -> Result<ASTNode, Error> {
         match self.lexer.get_token()? {
-            Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
-            e => Err(self.lexer.get_error(format!("Expected type variable, got {:?}", e)))
+            Token::Variable(ref name) =>
+                Ok(ASTNode::Name(name.clone())),
+            e => Err(self.lexer.get_error(format!(
+                        "Expected type variable, got {:?}", e)))
         }
     }
 
@@ -182,17 +200,32 @@ impl <'a> Parser <'a> {
         match self.lexer.get_token()? {
             Token::Keyword(ref val) => {
                 match val.as_str() {
-                    "true" => Ok(ASTNode::Boolean(true)),
-                    "false" => Ok(ASTNode::Boolean(false)),
-                    e => Err(self.lexer.get_error(format!("Expected type boolean, got {:?}",
-                                                          e)))
+                    "true" =>
+                        Ok(ASTNode::Boolean(true)),
+                    "false" =>
+                        Ok(ASTNode::Boolean(false)),
+                    e => Err(self.lexer.get_error(format!(
+                                "Expected type boolean, got {:?}", e)))
                 }
             },
-            e => Err(self.lexer.get_error(format!("Expected type boolean, got {:?}", e)))
+            e => Err(self.lexer.get_error(format!(
+                        "Expected type boolean, got {:?}", e)))
         }
     }
 
-    fn parse_program(&mut self) -> Result<ASTNode, Error> {
+    fn parse_sequence(&mut self) -> Result<ASTNode, Error> {
+        let sequence = self.parse_delimited(Token::Delimiter('{'),
+                                            Token::Delimiter(';'),
+                                            Token::Delimiter('}'),
+                                            Self::parse_expression)?;
+
+        match sequence.len() {
+            0 =>
+                unimplemented!(),
+            1 =>
+                unimplemented!(),
+            _ => unimplemented!(),
+        }
         unimplemented!();
     }
 

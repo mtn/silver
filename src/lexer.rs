@@ -68,25 +68,18 @@ impl <'a> Lexer<'a> {
                 self.skip_comment();
                 self.get_token()
             },
-            '"' => {
-                self.read_string()
-            },
-            '0'...'9' => {
-                self.read_number()
-            },
-            'a'...'z' | '_' => {
-                self.read_identifier()
-            },
-            ','|';'|'('|')'|'['|']'|'{'|'}' => {
-                Ok(Token::Delimiter(self.next_char()))
-            },
-            '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' => {
-                self.read_operator()
-            },
-            _ => {
-                Err(self.get_error(format!("Error reading character {}",
+            '"' =>
+                self.read_string(),
+            '0'...'9' =>
+                self.read_number(),
+            'a'...'z' | '_' =>
+                self.read_identifier(),
+            ','|';'|'('|')'|'['|']'|'{'|'}' =>
+                Ok(Token::Delimiter(self.next_char())),
+            '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' =>
+                self.read_operator(),
+            _ => Err(self.get_error(format!("Error reading character {}",
                                            self.input[self.ind])))
-            }
         }
     }
 
@@ -110,7 +103,8 @@ impl <'a> Lexer<'a> {
         let special_id_chars = "?!-<>=_";
         let id = self.read_while(|ch| {
             match ch {
-                '0'...'9' | 'a'...'z' | 'A'...'Z' => true,
+                '0'...'9'|'a'...'z'|'A'...'Z' =>
+                    true,
                 _ => special_id_chars.contains(ch)
             }
         });
@@ -127,7 +121,8 @@ impl <'a> Lexer<'a> {
 
         for (i,ch) in self.input[self.ind..].iter().enumerate() {
             match *ch {
-                '0'...'9' => digits.push(self.input[self.ind + i]),
+                '0'...'9' =>
+                    digits.push(self.input[self.ind + i]),
                 '.' => {
                     if dotted {
                         break
@@ -145,15 +140,17 @@ impl <'a> Lexer<'a> {
 
         if digits.contains('.') {
             match digits.parse::<f32>() {
-                Ok(floating) => Ok(Token::FloatingPoint(floating)),
-                Err(err) => Err(self.get_error(format!("Error parsing float: {}",
-                                                       err)))
+                Ok(floating) =>
+                    Ok(Token::FloatingPoint(floating)),
+                Err(err) =>
+                    Err(self.get_error(format!("Error parsing float: {}", err)))
             }
         } else {
             match digits.parse::<i32>() {
-                Ok(integral) => Ok(Token::Integral(integral)),
-                Err(err) => Err(self.get_error(format!("Error parsing integer: {}",
-                                                       err)))
+                Ok(integral) =>
+                    Ok(Token::Integral(integral)),
+                Err(err) =>
+                    Err(self.get_error(format!("Error parsing integer: {}", err)))
             }
         }
     }
