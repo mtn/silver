@@ -17,6 +17,7 @@ pub enum ASTNode {
     },
 
     Function {
+        name: Box<Option<ASTNode>>,
         args: Vec<ASTNode>,
         body: Box<ASTNode>
     },
@@ -36,10 +37,6 @@ pub enum ASTNode {
         op: Token,
         lhs: Box<ASTNode>,
         rhs: Box<ASTNode>
-    },
-    Block {
-        vars: Vec<ASTNode>,
-        body: Box<ASTNode>
     },
 
     Sequence(Vec<ASTNode>)
@@ -187,8 +184,6 @@ impl <'a> Parser <'a> {
                         self.parse_bool(),
                     "fn" =>
                         self.parse_declaration(),
-                    "let" =>
-                        self.parse_let(),
                     _ =>
                         Ok(ASTNode::Integer(3)),
                 }
@@ -238,14 +233,14 @@ impl <'a> Parser <'a> {
         }
     }
 
-    fn parse_let(&mut self) -> Result<ASTNode, Error> {
-        unimplemented!();
-    }
-
     fn parse_declaration(&mut self) -> Result<ASTNode, Error> {
         self.consume(Token::Keyword(String::from("fn")));
 
         Ok(ASTNode::Function {
+            name: Box::new(match self.lexer.peek()? {
+                Token::Variable(ref name) => Some(ASTNode::Name(name.clone())),
+                _ => None
+            }),
             args: self.parse_delimited(Token::Delimiter('('),
                                        Token::Delimiter(','),
                                        Token::Delimiter(')'),

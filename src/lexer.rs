@@ -28,7 +28,7 @@ impl <'a> Lexer<'a> {
             ind: 0,
             line: 1,
             col: 0,
-            keywords: vec!["fn", "let", "true", "false", "if", "then", "else"],
+            keywords: vec!["fn", "true", "false", "if", "then", "else"],
             peeked: None,
         }
     }
