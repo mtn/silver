@@ -4,9 +4,9 @@ mod parser;
 mod emitter;
 
 fn main() {
-    // let mut lexer = lexer::Lexer::new("a(a,b)");
+    // let inp = "if x then y";
+    // let mut lexer = lexer::Lexer::new(inp);
     // let mut parser = parser::Parser { lexer };
-    // parser.parse();
 
 
     println!("Hello, world!");

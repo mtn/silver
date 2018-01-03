@@ -2,7 +2,7 @@ use super::util::Error;
 
 pub struct Lexer <'a> {
     input: Vec<char>,
-    pub ind: usize,
+    ind: usize,
     line: u32,
     col: u32,
     keywords: Vec<&'a str>,

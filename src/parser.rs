@@ -3,7 +3,7 @@ use super::lexer::Token;
 
 use super::util::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ASTNode {
     Integer(i32),
     Float(f32),
@@ -47,11 +47,6 @@ pub struct Parser <'a> {
 }
 
 impl <'a> Parser <'a> {
-    pub fn parse(&mut self) {
-        // let res  = self.parse_inv_or_expr();
-        // println!("res {:?}", res.unwrap());
-    }
-
     pub fn parse_top_level(&mut self) -> Result<ASTNode, Error> {
         let mut program: Vec<ASTNode> = Vec::new();
 
@@ -131,7 +126,7 @@ impl <'a> Parser <'a> {
 
         let condition = self.parse_expression()?;
 
-        if let Token::Keyword(ref kw) = self.lexer.get_token()? {
+        if let Token::Keyword(ref kw) = self.lexer.peek()? {
             if kw == "then" {
                 self.consume(Token::Keyword(String::from("then")))?;
             } else {
@@ -227,10 +222,9 @@ impl <'a> Parser <'a> {
             } else {
                 return Ok(lhs)
             }
-        } else {
-            Err(self.lexer.get_error(format!("Unexpected call to parse_binary, \
-                                          expected token")))
         }
+
+        Ok(lhs)
     }
 
     fn parse_declaration(&mut self) -> Result<ASTNode, Error> {
@@ -329,7 +323,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse_empty() {
+        let inp = "";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        if let Ok(ASTNode::Sequence(ref vec)) = parser.parse_top_level() {
+            assert_eq!(*vec, Vec::new())
+        } else {
+            panic!("Expected parse_top_level to return sequence")
+        }
+    }
+
+    #[test]
     fn test_parse_if() {
         let inp = "if x then y";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected: ASTNode = ASTNode::Sequence(vec![
+                                    ASTNode::Conditional {
+                                        cond: Box::new(
+                                                  ASTNode::Name(String::from("x"))),
+                                        if_body: Box::new(
+                                            ASTNode::Name(String::from("y"))),
+                                        else_body: Box::new(None)
+                                    }
+                                ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!("Conditional failed to parse");
+        }
+
     }
 }
