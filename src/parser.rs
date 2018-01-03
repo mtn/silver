@@ -127,13 +127,13 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_conditional(&mut self) -> Result<ASTNode, Error> {
-        self.consume(Token::Keyword(String::from("if")));
+        self.consume(Token::Keyword(String::from("if")))?;
 
         let condition = self.parse_expression()?;
 
         if let Token::Keyword(ref kw) = self.lexer.get_token()? {
             if kw == "then" {
-                self.consume(Token::Keyword(String::from("then")));
+                self.consume(Token::Keyword(String::from("then")))?;
             } else {
                 return Err(self.lexer.get_error(
                         format!("Unexpected keyword {} after if, expected then", kw)));
@@ -145,7 +145,7 @@ impl <'a> Parser <'a> {
 
         if let Token::Keyword(ref kw) = self.lexer.peek()? {
             if kw == "else" {
-                self.consume(Token::Keyword(String::from("then")));
+                self.consume(Token::Keyword(String::from("then")))?;
                 else_body = Some(self.parse_expression()?);
             } else {
                 return Err(self.lexer.get_error(
@@ -169,9 +169,9 @@ impl <'a> Parser <'a> {
     fn parse_atom_helper(&mut self) -> Result<ASTNode, Error> {
         match self.lexer.peek()? {
             Token::Delimiter('(') => {
-                self.consume(Token::Delimiter('('));
+                self.consume(Token::Delimiter('('))?;
                 let exp = self.parse_expression();
-                self.consume(Token::Delimiter(')'));
+                self.consume(Token::Delimiter(')'))?;
 
                 exp
             },
@@ -234,7 +234,7 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_declaration(&mut self) -> Result<ASTNode, Error> {
-        self.consume(Token::Keyword(String::from("fn")));
+        self.consume(Token::Keyword(String::from("fn")))?;
 
         Ok(ASTNode::Function {
             name: Box::new(match self.lexer.peek()? {
@@ -319,5 +319,17 @@ impl <'a> Parser <'a> {
             "*"|"/"|"%" => 6,
             _ => panic!("Unexpected operator on binary ASTNode"),
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_parse_if() {
+        let inp = "if x then y";
     }
 }

@@ -227,5 +227,84 @@ impl <'a> Lexer<'a> {
 mod tests {
 
     use super::*;
-}
 
+    #[test]
+    fn test_lex_variable() {
+        let mut lexer = Lexer::new("varname");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::Variable(String::from("varname")));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_lex_keyword() {
+        let mut lexer = Lexer::new("if");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::Keyword(String::from("if")));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_lex_string_literal() {
+        let mut lexer = Lexer::new("\"string literal wow\"");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::StringLiteral(
+                String::from("string literal wow")));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_lex_integral() {
+        let mut lexer = Lexer::new("22312");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::Integral(22312));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_lex_floating_point() {
+        let mut lexer = Lexer::new("22.312");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::FloatingPoint(22.312));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+
+        let mut lexer = Lexer::new("22.312.2");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::FloatingPoint(22.312));
+        assert!(!lexer.eof());
+    }
+
+    #[test]
+    fn test_lex_delimiter() {
+        let mut lexer = Lexer::new(")");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::Delimiter(')'));
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_lex_empty() {
+        let mut lexer = Lexer::new("");
+
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+    }
+
+    #[test]
+    fn test_peek_and_get_token() {
+        let mut lexer = Lexer::new("abc\"bc\"");
+
+        // Peek should be idempotent
+        assert_eq!(lexer.peek().unwrap(), Token::Variable(String::from("abc")));
+        assert_eq!(lexer.peek().unwrap(), Token::Variable(String::from("abc")));
+
+        // get_token should equal the last result of peek
+        assert_eq!(lexer.get_token().unwrap(), Token::Variable(String::from("abc")));
+
+        assert_eq!(lexer.peek().unwrap(), Token::StringLiteral(String::from("bc")));
+        assert_eq!(lexer.get_token().unwrap(), Token::StringLiteral(String::from("bc")));
+
+        assert_eq!(lexer.peek().unwrap(), Token::EOF);
+        assert_eq!(lexer.get_token().unwrap(), Token::EOF);
+        assert!(lexer.eof());
+    }
+}
