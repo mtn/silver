@@ -115,8 +115,9 @@ impl <'a> Parser <'a> {
     }
 
     fn parse_expression_helper(&mut self) -> Result<ASTNode, Error> {
-        // Parse the next atom
         let next_atom = self.parse_atom()?;
+        println!("made it past parse_atom, parsed {:?}", next_atom);
+
         // Look ahead for operators
         self.parse_binary(next_atom, 0)
     }
@@ -179,8 +180,7 @@ impl <'a> Parser <'a> {
                         self.parse_bool(),
                     "fn" =>
                         self.parse_declaration(),
-                    _ =>
-                        Ok(ASTNode::Integer(3)),
+                    _ => Err(self.lexer.get_error(format!("Unexpected keyword {}", kw)))
                 }
             },
             _ => {
@@ -206,6 +206,8 @@ impl <'a> Parser <'a> {
     fn parse_binary(&mut self, lhs: ASTNode, lhs_prec: u32) -> Result<ASTNode, Error> {
         let next = self.lexer.peek();
         if let Token::Operator(ref op) = next? {
+            self.lexer.get_token()?; // advance
+
             let rhs_prec = Self::get_precedence(op);
             if rhs_prec > lhs_prec {
                 // Parse the next atom, which follows the rhs operator
@@ -336,26 +338,139 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_primative_sequence() {
+        let inp = "3; 3.1; \"stringliteralwow\"; true; false";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected: ASTNode = ASTNode::Sequence(vec![
+                                    ASTNode::Integer(3),
+                                    ASTNode::Float(3.1),
+                                    ASTNode::StringLiteral(
+                                        String::from("stringliteralwow")),
+                                    ASTNode::Boolean(true),
+                                    ASTNode::Boolean(false)
+                                ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!("Primative sequence failed to parse");
+        }
+    }
+
+    #[test]
+    fn test_parse_name_sequence() {
+        // Lots of extra whitespace, and none
+        let inp = "foo;          bar;baz";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected = ASTNode::Sequence(vec![ASTNode::Name(String::from("foo")),
+                                              ASTNode::Name(String::from("bar")),
+                                              ASTNode::Name(String::from("baz"))]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!("Name failed to parse");
+        }
+    }
+
+    #[test]
     fn test_parse_if() {
         let inp = "if x then y";
         let mut lexer = lexer::Lexer::new(inp);
         let mut parser = Parser { lexer };
 
-        let expected: ASTNode = ASTNode::Sequence(vec![
-                                    ASTNode::Conditional {
-                                        cond: Box::new(
-                                                  ASTNode::Name(String::from("x"))),
-                                        if_body: Box::new(
-                                            ASTNode::Name(String::from("y"))),
-                                        else_body: Box::new(None)
-                                    }
-                                ]);
+        let expected = ASTNode::Sequence(vec![
+                           ASTNode::Conditional {
+                               cond: Box::new(
+                                   ASTNode::Name(String::from("x"))),
+                                       if_body: Box::new(
+                                           ASTNode::Name(String::from("y"))),
+                                       else_body: Box::new(None)
+                                   }
+                       ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
         } else {
             panic!("Conditional failed to parse");
         }
+    }
 
+    #[test]
+    fn test_parse_invocation() {
+        let inp = "x(a,b,   c)";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected = ASTNode::Sequence(vec![
+                           ASTNode::Invocation {
+                               func: Box::new(ASTNode::Name(String::from("x"))),
+                               args: vec![
+                                   ASTNode::Name(String::from("a")),
+                                   ASTNode::Name(String::from("b")),
+                                   ASTNode::Name(String::from("c")),
+                               ]
+                           }
+                       ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!("Invocation failed to parse");
+        }
+    }
+
+    #[test]
+    fn test_parse_simple_binary() {
+        let inp = "x = y";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected = ASTNode::Sequence(vec![
+                           ASTNode::Binary {
+                               op: lexer::Token::Operator(String::from("=")),
+                               lhs: Box::new(ASTNode::Name(String::from("x"))),
+                               rhs: Box::new(ASTNode::Name(String::from("y"))),
+                           }
+                       ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!(format!("Simple binary failed to parse"));
+        }
+    }
+
+    #[test]
+    fn test_parse_complex_parenthesized_binary() {
+        let inp = "a = (b + c) * d";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected = ASTNode::Sequence(vec![
+                           ASTNode::Binary {
+                               op: lexer::Token::Operator(String::from("=")),
+                               lhs: Box::new(ASTNode::Name(String::from("a"))),
+                               rhs: Box::new(ASTNode::Binary {
+                                        op: lexer::Token::Operator(String::from("*")),
+                                        lhs: Box::new(ASTNode::Binary {
+                                            op: lexer::Token::Operator(String::from("+")),
+                                            lhs: Box::new(ASTNode::Name(String::from("b"))),
+                                            rhs: Box::new(ASTNode::Name(String::from("c"))),
+                                        }),
+                                        rhs: Box::new(ASTNode::Name(String::from("d")))
+                                        })
+                           }
+                       ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!(format!("Simple binary failed to parse"));
+        }
     }
 }

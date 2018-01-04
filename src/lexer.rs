@@ -72,7 +72,7 @@ impl <'a> Lexer<'a> {
                 self.read_string(),
             '0'...'9' =>
                 self.read_number(),
-            'a'...'z' | '_' =>
+            'a'...'z'|'_' =>
                 self.read_identifier(),
             ','|';'|'('|')'|'['|']'|'{'|'}' =>
                 Ok(Token::Delimiter(self.next_char())),
