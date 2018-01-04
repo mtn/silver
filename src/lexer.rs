@@ -190,7 +190,7 @@ impl <'a> Lexer<'a> {
 
     fn consume_whitespace(&mut self) {
         self.read_while(|ch| {
-            ch == ' ' || ch == '\t' || ch == '\n'
+            ch.is_whitespace()
         });
     }
 

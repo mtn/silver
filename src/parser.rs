@@ -11,10 +11,6 @@ pub enum ASTNode {
     Boolean(bool),
 
     Name(String),
-    Variable {
-        name: String,
-        def: Box<ASTNode>
-    },
 
     Function {
         name: Box<Option<ASTNode>>,
