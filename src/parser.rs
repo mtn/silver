@@ -107,6 +107,7 @@ impl <'a> Parser <'a> {
             terms.push(parse_function(self)?)
         }
 
+        self.consume(end);
         Ok(terms)
     }
 
@@ -141,7 +142,7 @@ impl <'a> Parser <'a> {
 
         if let Token::Keyword(ref kw) = self.lexer.peek()? {
             if kw == "else" {
-                self.consume(Token::Keyword(String::from("then")))?;
+                self.consume(Token::Keyword(String::from("else")))?;
                 else_body = Some(self.parse_expression()?);
             } else {
                 return Err(self.lexer.get_error(
@@ -234,13 +235,19 @@ impl <'a> Parser <'a> {
 
         Ok(ASTNode::Function {
             name: Box::new(match self.lexer.peek()? {
-                Token::Variable(ref name) => Some(ASTNode::Name(name.clone())),
+                Token::Variable(ref name) => {
+                    self.lexer.get_token(); // Consume the name
+                    Some(ASTNode::Name(name.clone()))
+                },
                 _ => None
             }),
-            args: self.parse_delimited(Token::Delimiter('('),
-                                       Token::Delimiter(','),
-                                       Token::Delimiter(')'),
-                                       Self::parse_variable_name)?,
+            args: {
+                println!("parsing delimited!, peek: {:?}", self.lexer.peek());
+                self.parse_delimited(Token::Delimiter('('),
+                                           Token::Delimiter(','),
+                                           Token::Delimiter(')'),
+                                           Self::parse_variable_name)?
+            },
             body: Box::new(self.parse_sequence()?)
         })
     }
@@ -471,6 +478,50 @@ mod tests {
             assert_eq!(res, expected);
         } else {
             panic!(format!("Simple binary failed to parse"));
+        }
+    }
+
+    #[test]
+    fn test_function_declaration() {
+        let inp = "fn a (b,c) {
+                       if b {
+                           c = b
+                       } else {
+                           b = c
+                       };
+                       b
+                   }";
+        let mut lexer = lexer::Lexer::new(inp);
+        let mut parser = Parser { lexer };
+
+        let expected = ASTNode::Sequence(vec![
+                           ASTNode::Function {
+                               name: Box::new(Some(ASTNode::Name(String::from("a")))),
+                               args: vec![ASTNode::Name(String::from("b")),
+                                          ASTNode::Name(String::from("c"))],
+                               body: Box::new(ASTNode::Sequence(vec![
+                                   ASTNode::Conditional {
+                                       cond: Box::new(ASTNode::Name(String::from("b"))),
+                                       if_body: Box::new(ASTNode::Binary {
+                                           op: lexer::Token::Operator(String::from("=")),
+                                           lhs: Box::new(ASTNode::Name(String::from("c"))),
+                                           rhs: Box::new(ASTNode::Name(String::from("b"))),
+                                       }),
+                                       else_body: Box::new(Some(ASTNode::Binary {
+                                           op: lexer::Token::Operator(String::from("=")),
+                                           lhs: Box::new(ASTNode::Name(String::from("b"))),
+                                           rhs: Box::new(ASTNode::Name(String::from("c"))),
+                                       })),
+                                   },
+                                   ASTNode::Name(String::from("b")),
+                               ])),
+                           }
+                       ]);
+
+        if let Ok(res) = parser.parse_top_level() {
+            assert_eq!(res, expected);
+        } else {
+            panic!(format!("Function declaration failed to parse"));
         }
     }
 }
