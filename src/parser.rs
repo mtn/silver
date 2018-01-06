@@ -113,7 +113,6 @@ impl <'a> Parser <'a> {
 
     fn parse_expression_helper(&mut self) -> Result<ASTNode, Error> {
         let next_atom = self.parse_atom()?;
-        println!("made it past parse_atom, parsed {:?}", next_atom);
 
         // Look ahead for operators
         self.parse_binary(next_atom, 0)
@@ -238,7 +237,6 @@ impl <'a> Parser <'a> {
                 _ => None
             }),
             args: {
-                println!("parsing delimited!, peek: {:?}", self.lexer.peek());
                 self.parse_delimited(Token::Delimiter('('),
                                            Token::Delimiter(','),
                                            Token::Delimiter(')'),
@@ -517,7 +515,7 @@ mod tests {
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
         } else {
-            panic!(format!("Function declaration failed to parse"));
+            panic!(String::from("Function declaration failed to parse"));
         }
     }
 }
