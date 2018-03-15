@@ -1,9 +1,16 @@
 use super::lexer::Token;
 use super::parser::ASTNode;
 
+use std::fmt;
+
 #[derive(Debug, PartialEq)]
 pub struct Error {
     pub msg: String,
+}
+
+impl fmt::Display for Error { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error: {}", self.msg)
+    }
 }
 
 pub fn emit(ast: ASTNode) -> Result<String, Error> {

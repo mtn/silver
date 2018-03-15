@@ -33,14 +33,13 @@ fn process_input_file(filename: &String) {
     let parsed = parser.parse_top_level();
 
     if let Err(err) = parsed {
-        // TODO implement display
-        println!("{:?}", err);
+        println!("{}", err);
         exit(1)
     }
 
     let emission = emitter::emit(parsed.unwrap());
     if let Err(err) = emission {
-        println!("{:?}", err);
+        println!("{}", err);
         exit(1)
     }
 
@@ -53,7 +52,7 @@ fn process_input_file(filename: &String) {
     if let Err(ref _e) = f.unwrap().write_all(emission.unwrap().as_bytes()){
         println!("There was an error writing to the output file, aborting.");
     } else {
-        println!("Output written successfully to out.js");
+        println!("Output written to out.js");
     }
 }
 
