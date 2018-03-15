@@ -69,7 +69,7 @@ impl <'a> Parser <'a> {
             } else {
                 Err(self.lexer.get_error(format!(
                             "Unexpected token, expected {:?} given {:?}",
-                            tok, token)))
+                            token, tok)))
             }
         } else {
             Err(self.lexer.get_error(String::from("get_token failed")))
@@ -103,7 +103,7 @@ impl <'a> Parser <'a> {
             terms.push(parse_function(self)?)
         }
 
-        self.consume(end);
+        self.consume(end)?;
         Ok(terms)
     }
 
@@ -231,7 +231,7 @@ impl <'a> Parser <'a> {
         Ok(ASTNode::Function {
             name: Box::new(match self.lexer.peek()? {
                 Token::Variable(ref name) => {
-                    self.lexer.get_token(); // Consume the name
+                    self.lexer.get_token()?; // Consume the name
                     Some(ASTNode::Name(name.clone()))
                 },
                 _ => None

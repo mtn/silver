@@ -28,8 +28,6 @@ pub fn emit(ast: ASTNode) -> Result<String, Error> {
             => emit_binary(op, lhs, rhs),
         ASTNode::Sequence(vec)
             => emit_sequence(vec),
-        _ => Err(Error { msg: String::from("Unexpected node type encountered\
-                                           during code emission") }),
     }
 }
 
