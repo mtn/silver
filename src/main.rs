@@ -49,7 +49,7 @@ fn process_input_file(filename: &String) {
         exit(1)
     }
 
-    if let Err(ref _e) = f.unwrap().write_all(emission.unwrap().as_bytes()){
+    if let Err(ref _e) = f.unwrap().write_all(emission.unwrap().as_bytes()) {
         println!("There was an error writing to the output file, aborting.");
     } else {
         println!("Output written to out.js");

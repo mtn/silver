@@ -1,6 +1,6 @@
 use super::util::Error;
 
-pub struct Lexer <'a> {
+pub struct Lexer<'a> {
     input: Vec<char>,
     ind: usize,
     line: u32,
@@ -21,7 +21,7 @@ pub enum Token {
     EOF,
 }
 
-impl <'a> Lexer<'a> {
+impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Lexer {
         Lexer {
             input: input.chars().collect(),
@@ -55,31 +55,25 @@ impl <'a> Lexer<'a> {
         if let Some(_) = self.peeked {
             ret = Ok(self.peeked.clone().unwrap());
             self.peeked = None;
-            return ret
+            return ret;
         }
 
         self.consume_whitespace();
         if self.eof() {
-            return Ok(Token::EOF)
+            return Ok(Token::EOF);
         }
 
         match self.input[self.ind] {
             '#' => {
                 self.skip_comment();
                 self.get_token()
-            },
-            '"' =>
-                self.read_string(),
-            '0'...'9' =>
-                self.read_number(),
-            'a'...'z'|'_' =>
-                self.read_identifier(),
-            ','|';'|'('|')'|'['|']'|'{'|'}' =>
-                Ok(Token::Delimiter(self.next_char())),
-            '='|'+'|'-'|'*'|'/'|'%'|'&'|'<'|'>'|'!' =>
-                self.read_operator(),
-            _ => Err(self.get_error(format!("Error reading character {}",
-                                           self.input[self.ind])))
+            }
+            '"' => self.read_string(),
+            '0'...'9' => self.read_number(),
+            'a'...'z' | '_' => self.read_identifier(),
+            ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}' => Ok(Token::Delimiter(self.next_char())),
+            '=' | '+' | '-' | '*' | '/' | '%' | '&' | '<' | '>' | '!' => self.read_operator(),
+            _ => Err(self.get_error(format!("Error reading character {}", self.input[self.ind]))),
         }
     }
 
@@ -92,25 +86,20 @@ impl <'a> Lexer<'a> {
 
     fn read_operator(&mut self) -> Result<Token, Error> {
         let operator_chars = "=+-*/%&<>!";
-        let op_string = self.read_while(|ch| {
-            operator_chars.contains(ch)
-        });
+        let op_string = self.read_while(|ch| operator_chars.contains(ch));
 
         Ok(Token::Operator(op_string))
     }
 
     fn read_identifier(&mut self) -> Result<Token, Error> {
         let special_id_chars = "?!-<>=_";
-        let id = self.read_while(|ch| {
-            match ch {
-                '0'...'9'|'a'...'z'|'A'...'Z' =>
-                    true,
-                _ => special_id_chars.contains(ch)
-            }
+        let id = self.read_while(|ch| match ch {
+            '0'...'9' | 'a'...'z' | 'A'...'Z' => true,
+            _ => special_id_chars.contains(ch),
         });
 
         if self.keywords.contains(&id.as_str()) {
-            return Ok(Token::Keyword(id))
+            return Ok(Token::Keyword(id));
         }
         Ok(Token::Variable(id))
     }
@@ -119,18 +108,17 @@ impl <'a> Lexer<'a> {
         let mut dotted = false;
         let mut digits = String::new();
 
-        for (i,ch) in self.input[self.ind..].iter().enumerate() {
+        for (i, ch) in self.input[self.ind..].iter().enumerate() {
             match *ch {
-                '0'...'9' =>
-                    digits.push(self.input[self.ind + i]),
+                '0'...'9' => digits.push(self.input[self.ind + i]),
                 '.' => {
                     if dotted {
-                        break
+                        break;
                     }
                     dotted = true;
                     digits.push(self.input[self.ind + i])
                 }
-                _ => break
+                _ => break,
             }
         }
 
@@ -140,17 +128,13 @@ impl <'a> Lexer<'a> {
 
         if digits.contains('.') {
             match digits.parse::<f32>() {
-                Ok(floating) =>
-                    Ok(Token::FloatingPoint(floating)),
-                Err(err) =>
-                    Err(self.get_error(format!("Error parsing float: {}", err)))
+                Ok(floating) => Ok(Token::FloatingPoint(floating)),
+                Err(err) => Err(self.get_error(format!("Error parsing float: {}", err))),
             }
         } else {
             match digits.parse::<i32>() {
-                Ok(integral) =>
-                    Ok(Token::Integral(integral)),
-                Err(err) =>
-                    Err(self.get_error(format!("Error parsing integer: {}", err)))
+                Ok(integral) => Ok(Token::Integral(integral)),
+                Err(err) => Err(self.get_error(format!("Error parsing integer: {}", err))),
             }
         }
     }
@@ -164,7 +148,7 @@ impl <'a> Lexer<'a> {
             if escaped {
                 ret_str.push(*ch);
                 escaped = false;
-            } else if *ch == '\\'{
+            } else if *ch == '\\' {
                 escaped = true;
             } else if *ch == '"' {
                 break;
@@ -182,20 +166,17 @@ impl <'a> Lexer<'a> {
     }
 
     fn skip_comment(&mut self) {
-        self.read_while(|ch| {
-            ch != '\n'
-        });
+        self.read_while(|ch| ch != '\n');
         self.next_char(); // consume newline
     }
 
     fn consume_whitespace(&mut self) {
-        self.read_while(|ch| {
-            ch.is_whitespace()
-        });
+        self.read_while(|ch| ch.is_whitespace());
     }
 
     fn read_while<F>(&mut self, func: F) -> String
-        where F: Fn(char) -> bool
+    where
+        F: Fn(char) -> bool,
     {
         let mut ret_str = String::new();
 
@@ -232,7 +213,10 @@ mod tests {
     fn test_lex_variable() {
         let mut lexer = Lexer::new("varname");
 
-        assert_eq!(lexer.get_token().unwrap(), Token::Variable(String::from("varname")));
+        assert_eq!(
+            lexer.get_token().unwrap(),
+            Token::Variable(String::from("varname"))
+        );
         assert_eq!(lexer.get_token().unwrap(), Token::EOF);
     }
 
@@ -240,7 +224,10 @@ mod tests {
     fn test_lex_keyword() {
         let mut lexer = Lexer::new("if");
 
-        assert_eq!(lexer.get_token().unwrap(), Token::Keyword(String::from("if")));
+        assert_eq!(
+            lexer.get_token().unwrap(),
+            Token::Keyword(String::from("if"))
+        );
         assert_eq!(lexer.get_token().unwrap(), Token::EOF);
     }
 
@@ -248,8 +235,10 @@ mod tests {
     fn test_lex_string_literal() {
         let mut lexer = Lexer::new("\"string literal wow\"");
 
-        assert_eq!(lexer.get_token().unwrap(), Token::StringLiteral(
-                String::from("string literal wow")));
+        assert_eq!(
+            lexer.get_token().unwrap(),
+            Token::StringLiteral(String::from("string literal wow"))
+        );
         assert_eq!(lexer.get_token().unwrap(), Token::EOF);
     }
 
@@ -298,10 +287,19 @@ mod tests {
         assert_eq!(lexer.peek().unwrap(), Token::Variable(String::from("abc")));
 
         // get_token should equal the last result of peek
-        assert_eq!(lexer.get_token().unwrap(), Token::Variable(String::from("abc")));
+        assert_eq!(
+            lexer.get_token().unwrap(),
+            Token::Variable(String::from("abc"))
+        );
 
-        assert_eq!(lexer.peek().unwrap(), Token::StringLiteral(String::from("bc")));
-        assert_eq!(lexer.get_token().unwrap(), Token::StringLiteral(String::from("bc")));
+        assert_eq!(
+            lexer.peek().unwrap(),
+            Token::StringLiteral(String::from("bc"))
+        );
+        assert_eq!(
+            lexer.get_token().unwrap(),
+            Token::StringLiteral(String::from("bc"))
+        );
 
         assert_eq!(lexer.peek().unwrap(), Token::EOF);
         assert_eq!(lexer.get_token().unwrap(), Token::EOF);

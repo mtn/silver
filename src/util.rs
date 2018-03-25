@@ -9,10 +9,10 @@ pub struct Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error: {}\nLine: {}, Column: {}\n",
-               self.msg,
-               self.line,
-               self.col)
+        write!(
+            f,
+            "Error: {}\nLine: {}, Column: {}\n",
+            self.msg, self.line, self.col
+        )
     }
 }
-

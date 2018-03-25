@@ -15,43 +15,41 @@ pub enum ASTNode {
     Function {
         name: Box<Option<ASTNode>>,
         args: Vec<ASTNode>,
-        body: Box<ASTNode>
+        body: Box<ASTNode>,
     },
 
     Invocation {
         func: Box<ASTNode>,
-        args: Vec<ASTNode>
+        args: Vec<ASTNode>,
     },
 
     Conditional {
         cond: Box<ASTNode>,
         if_body: Box<ASTNode>,
-        else_body: Box<Option<ASTNode>>
+        else_body: Box<Option<ASTNode>>,
     },
 
     Binary {
         op: Token,
         lhs: Box<ASTNode>,
-        rhs: Box<ASTNode>
+        rhs: Box<ASTNode>,
     },
 
-    Sequence(Vec<ASTNode>)
+    Sequence(Vec<ASTNode>),
 }
 
-pub struct Parser <'a> {
+pub struct Parser<'a> {
     pub lexer: lexer::Lexer<'a>,
 }
 
-impl <'a> Parser <'a> {
+impl<'a> Parser<'a> {
     pub fn parse_top_level(&mut self) -> Result<ASTNode, Error> {
         let mut program: Vec<ASTNode> = Vec::new();
 
         while !self.lexer.eof() {
             match self.parse_expression() {
-                Ok(exp) =>
-                    program.push(exp),
-                Err(err) =>
-                    return Err(err)
+                Ok(exp) => program.push(exp),
+                Err(err) => return Err(err),
             }
             if !self.lexer.eof() {
                 self.consume(Token::Delimiter(';'))?;
@@ -68,17 +66,24 @@ impl <'a> Parser <'a> {
                 Ok(tok)
             } else {
                 Err(self.lexer.get_error(format!(
-                            "Unexpected token, expected {:?} given {:?}",
-                            token, tok)))
+                    "Unexpected token, expected {:?} given {:?}",
+                    token, tok
+                )))
             }
         } else {
             Err(self.lexer.get_error(String::from("get_token failed")))
         }
     }
 
-    fn parse_delimited<F>(&mut self, start: Token, separator: Token,
-                          end: Token, parse_function: F) -> Result<Vec<ASTNode>, Error>
-        where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
+    fn parse_delimited<F>(
+        &mut self,
+        start: Token,
+        separator: Token,
+        end: Token,
+        parse_function: F,
+    ) -> Result<Vec<ASTNode>, Error>
+    where
+        F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>,
     {
         self.consume(start)?;
 
@@ -127,8 +132,8 @@ impl <'a> Parser <'a> {
             if kw == "then" {
                 self.consume(Token::Keyword(String::from("then")))?;
             } else {
-                return Err(self.lexer.get_error(
-                        format!("Unexpected keyword {} after if, expected then", kw)));
+                return Err(self.lexer
+                    .get_error(format!("Unexpected keyword {} after if, expected then", kw)));
             }
         }
 
@@ -140,8 +145,10 @@ impl <'a> Parser <'a> {
                 self.consume(Token::Keyword(String::from("else")))?;
                 else_body = Some(self.parse_expression()?);
             } else {
-                return Err(self.lexer.get_error(
-                        format!("Unexpected keyword {}, expected else or nothing", kw)));
+                return Err(self.lexer.get_error(format!(
+                    "Unexpected keyword {}, expected else or nothing",
+                    kw
+                )));
             }
         } else {
             else_body = None;
@@ -150,7 +157,7 @@ impl <'a> Parser <'a> {
         Ok(ASTNode::Conditional {
             cond: Box::new(condition),
             if_body: Box::new(if_body),
-            else_body: Box::new(else_body)
+            else_body: Box::new(else_body),
         })
     }
 
@@ -166,32 +173,23 @@ impl <'a> Parser <'a> {
                 self.consume(Token::Delimiter(')'))?;
 
                 exp
-            },
+            }
             Token::Delimiter('{') => self.parse_sequence(),
-            Token::Keyword(ref kw) => {
-                match kw.as_str() {
-                    "if" =>
-                        self.parse_conditional(),
-                    "true" | "false" =>
-                        self.parse_bool(),
-                    "fn" =>
-                        self.parse_declaration(),
-                    _ => Err(self.lexer.get_error(format!("Unexpected keyword {}", kw)))
-                }
+            Token::Keyword(ref kw) => match kw.as_str() {
+                "if" => self.parse_conditional(),
+                "true" | "false" => self.parse_bool(),
+                "fn" => self.parse_declaration(),
+                _ => Err(self.lexer.get_error(format!("Unexpected keyword {}", kw))),
             },
             _ => {
                 let next = self.lexer.get_token();
                 match next? {
-                    Token::Variable(ref name) =>
-                        Ok(ASTNode::Name(name.clone())),
-                    Token::Integral(val) =>
-                        Ok(ASTNode::Integer(val)),
-                    Token::FloatingPoint(val) =>
-                        Ok(ASTNode::Float(val)),
-                    Token::StringLiteral(ref val) =>
-                        Ok(ASTNode::StringLiteral(val.clone())),
-                    _ => Err(self.lexer.get_error(
-                                String::from("Unexpected element in parse_atom"))),
+                    Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
+                    Token::Integral(val) => Ok(ASTNode::Integer(val)),
+                    Token::FloatingPoint(val) => Ok(ASTNode::Float(val)),
+                    Token::StringLiteral(ref val) => Ok(ASTNode::StringLiteral(val.clone())),
+                    _ => Err(self.lexer
+                        .get_error(String::from("Unexpected element in parse_atom"))),
                 }
             }
         }
@@ -212,13 +210,16 @@ impl <'a> Parser <'a> {
                 // advance right accumulating the lhs until there's only one term left
                 let next_binary = self.parse_binary(next_atom, rhs_prec)?;
 
-                return self.parse_binary(ASTNode::Binary {
-                    op: Token::Operator(op.clone()),
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(next_binary),
-                }, lhs_prec)
+                return self.parse_binary(
+                    ASTNode::Binary {
+                        op: Token::Operator(op.clone()),
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(next_binary),
+                    },
+                    lhs_prec,
+                );
             } else {
-                return Ok(lhs)
+                return Ok(lhs);
             }
         }
 
@@ -233,33 +234,38 @@ impl <'a> Parser <'a> {
                 Token::Variable(ref name) => {
                     self.lexer.get_token()?; // Consume the name
                     Some(ASTNode::Name(name.clone()))
-                },
-                _ => None
+                }
+                _ => None,
             }),
             args: {
-                self.parse_delimited(Token::Delimiter('('),
-                                           Token::Delimiter(','),
-                                           Token::Delimiter(')'),
-                                           Self::parse_variable_name)?
+                self.parse_delimited(
+                    Token::Delimiter('('),
+                    Token::Delimiter(','),
+                    Token::Delimiter(')'),
+                    Self::parse_variable_name,
+                )?
             },
-            body: Box::new(self.parse_sequence()?)
+            body: Box::new(self.parse_sequence()?),
         })
     }
 
     // Returns either an invocation or an expression, depending on what follows
     fn parse_inv_or_expr<F>(&mut self, parse_function: F) -> Result<ASTNode, Error>
-        where F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>
+    where
+        F: Fn(&mut Parser<'a>) -> Result<ASTNode, Error>,
     {
         let expr = parse_function(self);
 
         if Token::Delimiter('(') == self.lexer.peek()? {
             return Ok(ASTNode::Invocation {
                 func: Box::new(expr?),
-                args: self.parse_delimited(Token::Delimiter('('),
-                                           Token::Delimiter(','),
-                                           Token::Delimiter(')'),
-                                           Self::parse_expression)?
-            })
+                args: self.parse_delimited(
+                    Token::Delimiter('('),
+                    Token::Delimiter(','),
+                    Token::Delimiter(')'),
+                    Self::parse_expression,
+                )?,
+            });
         }
 
         expr
@@ -267,42 +273,37 @@ impl <'a> Parser <'a> {
 
     fn parse_variable_name(&mut self) -> Result<ASTNode, Error> {
         match self.lexer.get_token()? {
-            Token::Variable(ref name) =>
-                Ok(ASTNode::Name(name.clone())),
-            e => Err(self.lexer.get_error(format!(
-                        "Expected type variable, got {:?}", e)))
+            Token::Variable(ref name) => Ok(ASTNode::Name(name.clone())),
+            e => Err(self.lexer
+                .get_error(format!("Expected type variable, got {:?}", e))),
         }
     }
 
-    fn parse_bool(&mut self) -> Result<ASTNode, Error>  {
+    fn parse_bool(&mut self) -> Result<ASTNode, Error> {
         match self.lexer.get_token()? {
-            Token::Keyword(ref val) => {
-                match val.as_str() {
-                    "true" =>
-                        Ok(ASTNode::Boolean(true)),
-                    "false" =>
-                        Ok(ASTNode::Boolean(false)),
-                    e => Err(self.lexer.get_error(format!(
-                                "Expected type boolean, got {:?}", e)))
-                }
+            Token::Keyword(ref val) => match val.as_str() {
+                "true" => Ok(ASTNode::Boolean(true)),
+                "false" => Ok(ASTNode::Boolean(false)),
+                e => Err(self.lexer
+                    .get_error(format!("Expected type boolean, got {:?}", e))),
             },
-            e => Err(self.lexer.get_error(format!(
-                        "Expected type boolean, got {:?}", e)))
+            e => Err(self.lexer
+                .get_error(format!("Expected type boolean, got {:?}", e))),
         }
     }
 
     fn parse_sequence(&mut self) -> Result<ASTNode, Error> {
-        let sequence = self.parse_delimited(Token::Delimiter('{'),
-                                            Token::Delimiter(';'),
-                                            Token::Delimiter('}'),
-                                            Self::parse_expression)?;
+        let sequence = self.parse_delimited(
+            Token::Delimiter('{'),
+            Token::Delimiter(';'),
+            Token::Delimiter('}'),
+            Self::parse_expression,
+        )?;
 
         match sequence.len() {
-            0 =>
-                Ok(ASTNode::Boolean(false)), // empty sequences are falsey
-            1 =>
-                Ok(sequence[0].clone()),
-            _ => Ok(ASTNode::Sequence(sequence))
+            0 => Ok(ASTNode::Boolean(false)), // empty sequences are falsey
+            1 => Ok(sequence[0].clone()),
+            _ => Ok(ASTNode::Sequence(sequence)),
         }
     }
 
@@ -311,14 +312,13 @@ impl <'a> Parser <'a> {
             "=" => 1,
             "||" => 2,
             "&&" => 3,
-            "<"|"<="|">"|">="|"=="|"!=" => 4,
-            "+"|"-" => 5,
-            "*"|"/"|"%" => 6,
+            "<" | "<=" | ">" | ">=" | "==" | "!=" => 4,
+            "+" | "-" => 5,
+            "*" | "/" | "%" => 6,
             _ => panic!("Unexpected operator on binary ASTNode"),
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -345,13 +345,12 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected: ASTNode = ASTNode::Sequence(vec![
-                                    ASTNode::Integer(3),
-                                    ASTNode::Float(3.1),
-                                    ASTNode::StringLiteral(
-                                        String::from("stringliteralwow")),
-                                    ASTNode::Boolean(true),
-                                    ASTNode::Boolean(false)
-                                ]);
+            ASTNode::Integer(3),
+            ASTNode::Float(3.1),
+            ASTNode::StringLiteral(String::from("stringliteralwow")),
+            ASTNode::Boolean(true),
+            ASTNode::Boolean(false),
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -367,9 +366,11 @@ mod tests {
         let mut lexer = lexer::Lexer::new(inp);
         let mut parser = Parser { lexer };
 
-        let expected = ASTNode::Sequence(vec![ASTNode::Name(String::from("foo")),
-                                              ASTNode::Name(String::from("bar")),
-                                              ASTNode::Name(String::from("baz"))]);
+        let expected = ASTNode::Sequence(vec![
+            ASTNode::Name(String::from("foo")),
+            ASTNode::Name(String::from("bar")),
+            ASTNode::Name(String::from("baz")),
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -385,14 +386,12 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected = ASTNode::Sequence(vec![
-                           ASTNode::Conditional {
-                               cond: Box::new(
-                                   ASTNode::Name(String::from("x"))),
-                                       if_body: Box::new(
-                                           ASTNode::Name(String::from("y"))),
-                                       else_body: Box::new(None)
-                                   }
-                       ]);
+            ASTNode::Conditional {
+                cond: Box::new(ASTNode::Name(String::from("x"))),
+                if_body: Box::new(ASTNode::Name(String::from("y"))),
+                else_body: Box::new(None),
+            },
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -408,15 +407,15 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected = ASTNode::Sequence(vec![
-                           ASTNode::Invocation {
-                               func: Box::new(ASTNode::Name(String::from("x"))),
-                               args: vec![
-                                   ASTNode::Name(String::from("a")),
-                                   ASTNode::Name(String::from("b")),
-                                   ASTNode::Name(String::from("c")),
-                               ]
-                           }
-                       ]);
+            ASTNode::Invocation {
+                func: Box::new(ASTNode::Name(String::from("x"))),
+                args: vec![
+                    ASTNode::Name(String::from("a")),
+                    ASTNode::Name(String::from("b")),
+                    ASTNode::Name(String::from("c")),
+                ],
+            },
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -432,12 +431,12 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected = ASTNode::Sequence(vec![
-                           ASTNode::Binary {
-                               op: lexer::Token::Operator(String::from("=")),
-                               lhs: Box::new(ASTNode::Name(String::from("x"))),
-                               rhs: Box::new(ASTNode::Name(String::from("y"))),
-                           }
-                       ]);
+            ASTNode::Binary {
+                op: lexer::Token::Operator(String::from("=")),
+                lhs: Box::new(ASTNode::Name(String::from("x"))),
+                rhs: Box::new(ASTNode::Name(String::from("y"))),
+            },
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -453,20 +452,20 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected = ASTNode::Sequence(vec![
-                           ASTNode::Binary {
-                               op: lexer::Token::Operator(String::from("=")),
-                               lhs: Box::new(ASTNode::Name(String::from("a"))),
-                               rhs: Box::new(ASTNode::Binary {
-                                        op: lexer::Token::Operator(String::from("*")),
-                                        lhs: Box::new(ASTNode::Binary {
-                                            op: lexer::Token::Operator(String::from("+")),
-                                            lhs: Box::new(ASTNode::Name(String::from("b"))),
-                                            rhs: Box::new(ASTNode::Name(String::from("c"))),
-                                        }),
-                                        rhs: Box::new(ASTNode::Name(String::from("d")))
-                                        })
-                           }
-                       ]);
+            ASTNode::Binary {
+                op: lexer::Token::Operator(String::from("=")),
+                lhs: Box::new(ASTNode::Name(String::from("a"))),
+                rhs: Box::new(ASTNode::Binary {
+                    op: lexer::Token::Operator(String::from("*")),
+                    lhs: Box::new(ASTNode::Binary {
+                        op: lexer::Token::Operator(String::from("+")),
+                        lhs: Box::new(ASTNode::Name(String::from("b"))),
+                        rhs: Box::new(ASTNode::Name(String::from("c"))),
+                    }),
+                    rhs: Box::new(ASTNode::Name(String::from("d"))),
+                }),
+            },
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
@@ -489,28 +488,30 @@ mod tests {
         let mut parser = Parser { lexer };
 
         let expected = ASTNode::Sequence(vec![
-                           ASTNode::Function {
-                               name: Box::new(Some(ASTNode::Name(String::from("a")))),
-                               args: vec![ASTNode::Name(String::from("b")),
-                                          ASTNode::Name(String::from("c"))],
-                               body: Box::new(ASTNode::Sequence(vec![
-                                   ASTNode::Conditional {
-                                       cond: Box::new(ASTNode::Name(String::from("b"))),
-                                       if_body: Box::new(ASTNode::Binary {
-                                           op: lexer::Token::Operator(String::from("=")),
-                                           lhs: Box::new(ASTNode::Name(String::from("c"))),
-                                           rhs: Box::new(ASTNode::Name(String::from("b"))),
-                                       }),
-                                       else_body: Box::new(Some(ASTNode::Binary {
-                                           op: lexer::Token::Operator(String::from("=")),
-                                           lhs: Box::new(ASTNode::Name(String::from("b"))),
-                                           rhs: Box::new(ASTNode::Name(String::from("c"))),
-                                       })),
-                                   },
-                                   ASTNode::Name(String::from("b")),
-                               ])),
-                           }
-                       ]);
+            ASTNode::Function {
+                name: Box::new(Some(ASTNode::Name(String::from("a")))),
+                args: vec![
+                    ASTNode::Name(String::from("b")),
+                    ASTNode::Name(String::from("c")),
+                ],
+                body: Box::new(ASTNode::Sequence(vec![
+                    ASTNode::Conditional {
+                        cond: Box::new(ASTNode::Name(String::from("b"))),
+                        if_body: Box::new(ASTNode::Binary {
+                            op: lexer::Token::Operator(String::from("=")),
+                            lhs: Box::new(ASTNode::Name(String::from("c"))),
+                            rhs: Box::new(ASTNode::Name(String::from("b"))),
+                        }),
+                        else_body: Box::new(Some(ASTNode::Binary {
+                            op: lexer::Token::Operator(String::from("=")),
+                            lhs: Box::new(ASTNode::Name(String::from("b"))),
+                            rhs: Box::new(ASTNode::Name(String::from("c"))),
+                        })),
+                    },
+                    ASTNode::Name(String::from("b")),
+                ])),
+            },
+        ]);
 
         if let Ok(res) = parser.parse_top_level() {
             assert_eq!(res, expected);
